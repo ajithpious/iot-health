@@ -2,7 +2,7 @@ import time
 
 MEAN_FILTER_SIZE=15
 #Pulse detection parameters
-PULSE_MIN_THRESHOLD=300 #300 is good for finger, but for wrist you need like 20, and there is shitloads of noise
+PULSE_MIN_THRESHOLD=50 #300 is good for finger, but for wrist you need like 20, and there is shitloads of noise
 PULSE_MAX_THRESHOLD=2000
 PULSE_GO_DOWN_THRESHOLD=1
 PULSE_BPM_SAMPLE_SIZE =10 #Moving average size
@@ -61,20 +61,30 @@ class HRSpo2(object):
         self.meanDiffIR=meanDiffFilter_t([0]*MEAN_FILTER_SIZE,0,0,0)
         self.lpbFilterIR=butterworthFilter_t([0]*2,0)
         self.dcFilterIR=dcFilter_t()
+        self.dcFilterRed=dcFilter_t()
         self.result=result()
         self.currentBPM=0
         
-    def update(self,val):
+    def update(self,irVal,redVal):
         
-        self.dcFilterIR=self.dcRemove(val,self.dcFilterIR.w)
-        meanDiffResIR=self.meanDiff(self.dcFilterIR.result,self.meanDiffIR)
-        self.lowPassButterworthFilter(meanDiffResIR,self.lpbFilterIR)
+        self.dcFilterIR=self.dcRemove(irVal,self.dcFilterIR.w)
+        self.dcFilterRed=self.dcRemove(redVal,self.dcFilterRed.w)
+        
+#         meanDiffResIR=self.meanDiff(self.dcFilterIR.result,self.meanDiffIR)
+        
+        self.lowPassButterworthFilter(-self.dcFilterIR.result,self.lpbFilterIR)
+        
         self.irACValueSqSum +=  self.dcFilterIR.result* self.dcFilterIR.result
+        self.redACValueSqSum+=  self.dcFilterRed.result * self.dcFilterRed.result;
+        
         self.samplesRecorded+=1
+#         print(self.lpbFilterIR.result)
+        
         if( self.detectPulse( self.lpbFilterIR.result ) and self.samplesRecorded > 0 ):
             self.result.pulseDetected=True;
             self.pulsesDetected+=1
             self.result.heartBPM = self.currentBPM;
+            print(self.currentBPM)
             return self.result.heartBPM
         
         return "no beats"
@@ -126,14 +136,17 @@ class HRSpo2(object):
         elif(self.currentPulseDetectorState==PulseStateMachine.PULSE_TRACE_UP):
             if(sensor_value > HRSpo2.prev_sensor_value):
                 HRSpo2.currentBeat = time.ticks_ms()
+                #print("current beat=",HRSpo2.currentBeat)
                 self.lastBeatThreshold = sensor_value
             else:
                 if(self.debug == True):
                     print("Peak reached: ",end=" ");
                     print(sensor_value);
                     print(HRSpo2.prev_sensor_value);
-                    
+#                 print("current duration:",HRSpo2.currentBeat,end=" ")
+#                 print("last beat=",HRSpo2.lastBeat)
                 beatDuration = HRSpo2.currentBeat - HRSpo2.lastBeat;
+#                 print("Beat Duration=",beatDuration)
                 HRSpo2.lastBeat = HRSpo2.currentBeat;
                 rawBPM = 0;
                 if(beatDuration > 0):

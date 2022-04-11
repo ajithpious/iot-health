@@ -95,10 +95,10 @@ class MAX30100(object):
 
     def __init__(self,
                  i2c=None,
-                 mode=MODE_HR,
+                 mode=MODE_SPO2,
                  sample_rate=100,
-                 led_current_red=11.0,
-                 led_current_ir=11.0,
+                 led_current_red=27.1,
+                 led_current_ir=27.1,
                  pulse_width=1600,
                  max_buffer_len=10000
                  ):
@@ -131,11 +131,11 @@ class MAX30100(object):
 
     @property
     def red(self):
-        return self.buffer_red[-1] if self.buffer_red else None
+        return self.buffer_red #[-1] if self.buffer_red else None
 
     @property
     def ir(self):
-        return self.buffer_ir[-1] if self.buffer_ir else None
+        return self.buffer_ir#[-1] if self.buffer_ir else None
 
     def set_led_current(self, led_current_red=11.0, led_current_ir=11.0):
         # Validate the settings, convert to bit values.
@@ -172,11 +172,11 @@ class MAX30100(object):
         #bytes = self.i2c.read_i2c_block_data(I2C_ADDRESS, FIFO_DATA, 4)
         bytes = self.i2c.readfrom_mem(I2C_ADDRESS, FIFO_DATA, 4)
         # Add latest values.
-        self.buffer_ir.append(bytes[0]<<8 | bytes[1])
-        self.buffer_red.append(bytes[2]<<8 | bytes[3])
+        self.buffer_ir=(bytes[0]<<8 | bytes[1])
+        self.buffer_red=(bytes[2]<<8 | bytes[3])
         # Crop our local FIFO buffer to length.
-        self.buffer_red = self.buffer_red[-self.max_buffer_len:]
-        self.buffer_ir = self.buffer_ir[-self.max_buffer_len:]
+#         self.buffer_red = self.buffer_red[-self.max_buffer_len:]
+#         self.buffer_ir = self.buffer_ir[-self.max_buffer_len:]
 
     def shutdown(self):
         reg = self.i2c.readfrom_mem(I2C_ADDRESS, MODE_CONFIG,1)[0]
