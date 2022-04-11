@@ -1,5 +1,5 @@
 #sree
-from umqtt.robust import MQTTClient
+from umqtt.simple import MQTTClient
 import ssd1306
 import json
 import time
@@ -38,19 +38,19 @@ def on_disconnect(client, userdata, rc):
 
 def publish():
     
-#     try:
-    client.connect()
-    client.subscribe(topic=b"/v1.6/devices/esp32/temp",qos=1)
-    oled.fill(0)
-    oled.text("Connecting to Database......", 0, 0)
-    while True:
-        client.wait_msg()
-            #time.sleep_ms(10)
-#     except OSError as e:
-#             restart()
+    try:
+        oled.fill(0)
+        oled.text("Connecting to Database......", 0, 0)
+        while True:
+            client.connect()
+            client.subscribe(topic=b"/v1.6/devices/esp32/temp",qos=0)
+            client.check_msg()
+            time.sleep(5)
+            client.disconnect()
+    except OSError as e:
+            restart()
 
 client.set_callback(call_back_function)
-client.on_disconnect=on_disconnect
 publish()
 
 # thingspeak configuration

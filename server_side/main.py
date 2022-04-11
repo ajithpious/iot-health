@@ -45,7 +45,7 @@
 
 
 #sree
-from umqtt.robust import MQTTClient
+from umqtt.simple import MQTTClient
 import json
 from machine import Pin,ADC
 import time
@@ -55,7 +55,7 @@ ubidotsToken = "BBFF-Bfw8lO95m9pzKw8zE0Zupzw5OrKDQ0"
 
 clientID = "esp32"
 
-client = MQTTClient("clientID", server="industrial.api.ubidots.com",port=8883, user = ubidotsToken, password = ubidotsToken,ssl=True)
+client = MQTTClient("clientID", server="industrial.api.ubidots.com",port=8883,keepalive=60, user = ubidotsToken, password = ubidotsToken,ssl=True)
 temp=ADC(Pin(36))
 temp.atten(ADC.ATTN_11DB)
 
@@ -73,10 +73,10 @@ def publish():
 
         while True: 
             var = ((temp.read()*3.3)/4095)*100
-            msg = b'{"temp": {"value":%s, "context":{"stat":%s}}}' % (var, 10)
+            msg = b'{"value":%s}' % (var)
             print(msg)
-            client.publish(b"/v1.6/devices/esp32", msg)
-            time.sleep(1)
+            client.publish(b"/v1.6/devices/esp32/temp", msg,qos=0,retain=True)
+            time.sleep(5)
     except OSError as e:
             restart()
 
