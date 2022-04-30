@@ -2,13 +2,13 @@ import time
 
 MEAN_FILTER_SIZE=15
 #Pulse detection parameters
-PULSE_MIN_THRESHOLD=50 #300 is good for finger, but for wrist you need like 20, and there is shitloads of noise
+PULSE_MIN_THRESHOLD=300 #300 is good for finger, but for wrist you need like 20, and there is shitloads of noise
 PULSE_MAX_THRESHOLD=2000
 PULSE_GO_DOWN_THRESHOLD=1
 PULSE_BPM_SAMPLE_SIZE =10 #Moving average size
 def enum(**enums):
     return type('Enum', (), enums)
-PulseStateMachine = enum(PULSE_IDLE=0, PULSE_TRACE_UP=2, PULSE_TRACE_DOWN=3)
+PulseStateMachine = enum(PULSE_IDLE=0, PULSE_TRACE_UP=1, PULSE_TRACE_DOWN=3)
 
 
 
@@ -40,7 +40,10 @@ class result(object):
 
 
 class HRSpo2(object):
-    
+    prev_sensor_value = 0;
+    values_went_down = 0;
+    currentBeat = 0;
+    lastBeat = 0;
     def __init__(self,debug):
         
         self.debug=debug
@@ -69,11 +72,11 @@ class HRSpo2(object):
         
         self.dcFilterIR=self.dcRemove(irVal,self.dcFilterIR.w)
         self.dcFilterRed=self.dcRemove(redVal,self.dcFilterRed.w)
-        
+        #print("dcFilterIR=",self.dcFilterIR.result)
 #         meanDiffResIR=self.meanDiff(self.dcFilterIR.result,self.meanDiffIR)
         
         self.lowPassButterworthFilter(-self.dcFilterIR.result,self.lpbFilterIR)
-        
+        #print("lpbFilterIR=",self.lpbFilterIR.result)
         self.irACValueSqSum +=  self.dcFilterIR.result* self.dcFilterIR.result
         self.redACValueSqSum+=  self.dcFilterRed.result * self.dcFilterRed.result;
         
@@ -87,16 +90,15 @@ class HRSpo2(object):
             print(self.currentBPM)
             return self.result.heartBPM
         
-        return "no beats"
+        return self.lpbFilterIR.result
         
         
     def dcRemove(self,val,prev):
+        filtered=dcFilter_t()
+        filtered.w=val+0.95*prev
+        filtered.result=filtered.w-prev
+        return filtered
         
-        self.dcFilterIR.w=val+0.95*prev
-        self.dcFilterIR.result=self.dcFilterIR.w-prev
-        return self.dcFilterIR
-        
-        return y,new_prev
     def meanDiff(self,M,filterValues):
         avg=0
         filterValues.sum -= filterValues.values[filterValues.index];
@@ -117,10 +119,9 @@ class HRSpo2(object):
         #filterResult->v[1] = (1.367287359973195227e-1 * x) + (0.72654252800536101020 * filterResult->v[0]); //Very precise butterworth filter 
         filterResult.result = filterResult.v[0] + filterResult.v[1];
     def detectPulse(self,sensor_value):
-        HRSpo2.prev_sensor_value = 0;
-        HRSpo2.values_went_down = 0;
-        HRSpo2.currentBeat = 0;
-        HRSpo2.lastBeat = 0;
+        
+        #print("prev sensor=",HRSpo2.prev_sensor_value)
+        print("state=",self.currentPulseDetectorState)
         if(sensor_value > PULSE_MAX_THRESHOLD):
             self.currentPulseDetectorState = PulseStateMachine.PULSE_IDLE
             HRSpo2.prev_sensor_value = 0
